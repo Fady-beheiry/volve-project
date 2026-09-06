@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres_production
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: production_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - volve_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d production_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    container_name: jupyter_notebook
+    restart: unless-stopped
+    environment:
+      JUPYTER_TOKEN: password
+    ports:
+      - "8888:8888"
+      - "8050:8050"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/data
+      - ./outputs:/home/jovyan/outputs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - volve_network
+    command: start-notebook.py --NotebookApp.token=password
+
+volumes:
+  postgres_data:
+
+networks:
+  volve_network:
+    driver: bridge
